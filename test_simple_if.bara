@@ -1,0 +1,10 @@
+set;["test"]:(true)
+
+if {test = true}
+<-
+<print:("조건이 참입니다!")>
+->
+el {}
+<-
+<print:("조건이 거짓입니다!")>
+->

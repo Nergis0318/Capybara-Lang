@@ -1,0 +1,2 @@
+set;["user"]:({"name": "capybara", "age": 3})
+<print:("JSON 객체가 생성되었습니다")>
