@@ -1,0 +1,50 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.heroTitle {
+  font-size: 3rem;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.features {
+  display: flex;
+  align-items: center;
+  padding: 4rem 0;
+  width: 100%;
+}
+
+.feature {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.featureEmoji {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.codeSection {
+  background: var(--ifm-color-emphasis-100);
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.codeBlock {
+  display: inline-block;
+  background: var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  text-align: left;
+}

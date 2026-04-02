@@ -1,0 +1,361 @@
+---
+id: grammar
+title: 문법 가이드
+sidebar_label: 📖 문법
+sidebar_position: 2
+---
+
+# 문법 가이드 📖
+
+Capybara-Lang의 모든 문법 요소를 설명합니다.
+
+---
+
+## 기호 및 구분자 요약
+
+| 기호 | 역할 |
+|------|------|
+| `;` | 구문 요소 구분자 |
+| `["이름"]` | 변수명 식별자 |
+| `(값)` | 값 또는 표현식 래핑 |
+| `<명령>` | 함수 호출 |
+| `{조건}` | 조건식 |
+| `<-` | 블록 시작 |
+| `->` | 블록 끝 |
+| `` `텍스트` `` | 단일 행 주석 |
+| ` ``` 텍스트 ``` ` | 멀티라인 주석 |
+
+---
+
+## 주석
+
+### 단일 행 주석
+
+백틱(`` ` ``) 한 쌍으로 텍스트를 감싸서 주석을 작성합니다.
+
+```bara
+`이것은 단일 행 주석입니다.`
+`Single line comment`
+`변수를 선언합니다`
+set;["이름"]:("카피바라")
+```
+
+### 멀티라인 주석
+
+삼중 백틱(` ``` `)으로 여러 줄 주석을 작성합니다.
+
+~~~bara
+```
+이것은 멀티라인 주석입니다.
+여러 줄에 걸쳐
+내용을 작성할 수 있습니다.
+```
+~~~
+
+---
+
+## 변수
+
+### `set` — 기본 변수 선언
+
+타입 지정 없이 변수를 선언합니다.
+
+```
+set;["변수이름"]:(값)
+```
+
+**예시:**
+
+```bara
+set;["이름"]:("카피바라")
+set;["나이"]:(3)
+set;["귀여움"]:(true)
+set;["좌표"]:({"x": 10, "y": 20})
+```
+
+### `var` — 타입 지정 변수 선언
+
+명시적으로 타입을 지정해 변수를 선언합니다.
+
+```
+var;["변수이름"]:<타입>;<(값)>
+```
+
+**예시:**
+
+```bara
+var;["메시지"]:<str>;<("Capybara는 최고!")>
+var;["버전"]:<str>;<("v1.0.0")>
+```
+
+### 변수 읽기 (`pop`)
+
+선언된 변수의 값을 읽을 때는 `<pop>` 또는 조건식 내에서 `<변수이름>`으로 참조합니다.
+
+```bara
+set;["pop"]:(true)
+
+if {<pop> = true}
+<-
+  <print:("변수 값은 참입니다.")>
+->
+```
+
+---
+
+## 데이터 타입
+
+### 문자열 (String)
+
+큰따옴표로 감싼 텍스트를 소괄호 안에 작성합니다. 한국어를 포함한 모든 유니코드 문자를 지원합니다.
+
+```bara
+set;["인사"]:("안녕하세요!")
+set;["영어"]:("Hello, World!")
+set;["이모지"]:("Capybara 🐾")
+```
+
+### 숫자 (Number)
+
+정수 및 부동소수점 숫자를 소괄호 안에 작성합니다.
+
+```bara
+set;["정수"]:(42)
+set;["소수"]:(3.14159)
+set;["점수"]:(100)
+```
+
+### 불린 (Boolean)
+
+`true` 또는 `false`를 소괄호 안에 작성합니다. **대소문자를 구분하지 않습니다.**
+
+```bara
+set;["참1"]:(true)
+set;["참2"]:(True)
+set;["참3"]:(TRUE)
+set;["참4"]:(TrUe)
+
+set;["거짓1"]:(false)
+set;["거짓2"]:(False)
+set;["거짓3"]:(FALSE)
+```
+
+### JSON 객체
+
+JSON 리터럴을 소괄호 안에 직접 작성합니다.
+
+```bara
+set;["사용자"]:({"이름": "카피바라", "나이": 3, "취미": "수영"})
+set;["설정"]:({"언어": "한국어", "테마": "다크", "알림": true})
+set;["좌표"]:({"x": 128.0, "y": 37.5})
+```
+
+---
+
+## 입출력
+
+### `print` — 출력
+
+값을 화면에 출력합니다.
+
+```
+<print:(값)>
+```
+
+**예시:**
+
+```bara
+<print:("안녕하세요!")>
+<print:("Capybara-Lang 🐾")>
+<print:(42)>
+```
+
+### `input` — 입력
+
+사용자로부터 입력을 받아 변수에 저장합니다.
+
+```
+set;["변수이름"]:(<input;print:("프롬프트 메시지")>)
+```
+
+**예시:**
+
+```bara
+set;["이름"]:(<input;print:("이름을 입력하세요: ")>)
+set;["나이"]:(<input;print:("나이를 입력하세요: ")>)
+<print:("입력이 완료되었습니다.")>
+```
+
+---
+
+## 조건문
+
+Capybara-Lang의 조건문은 `if`, `fi`(elif), `el`(else) 키워드를 사용합니다.  
+블록은 `<-` 로 시작하고 `->` 로 끝납니다.
+
+### `if` — 조건문
+
+```bara
+if {조건}
+<-
+  <실행문>
+->
+```
+
+**예시:**
+
+```bara
+set;["pop"]:(true)
+
+if {<pop> = true}
+<-
+  <print:("조건이 참입니다! ✅")>
+->
+```
+
+### `fi` — elif (else if)
+
+```bara
+fi {조건}
+<-
+  <실행문>
+->
+```
+
+### `el` — else
+
+```bara
+el {}
+<-
+  <실행문>
+->
+```
+
+### 전체 조건문 예시
+
+```bara
+set;["점수"]:(85)
+set;["pop"]:(true)
+
+if {<pop> = true}
+<-
+  <print:("✅ 조건이 참입니다!")>
+->
+fi {<pop> = false}
+<-
+  <print:("❌ 조건이 거짓입니다.")>
+->
+el {}
+<-
+  <print:("❓ 알 수 없는 상태입니다.")>
+->
+```
+
+---
+
+## 키워드 목록
+
+| 키워드 | 분류 | 설명 |
+|--------|------|------|
+| `set` | 변수 | 타입 없는 변수 선언 |
+| `var` | 변수 | 타입 지정 변수 선언 |
+| `if` | 조건문 | 조건문 시작 |
+| `fi` | 조건문 | elif 구문 |
+| `el` | 조건문 | else 구문 |
+| `print` | 출력 | 화면 출력 |
+| `input` | 입력 | 사용자 입력 |
+| `pop` | 접근 | 변수 값 참조 |
+| `str` | 타입 | 문자열 타입 어노테이션 |
+
+---
+
+## BNF 문법 정의
+
+```
+program             ::= statement*
+
+statement           ::= comment
+                      | variable_declaration
+                      | conditional
+                      | expression
+
+comment             ::= '`' text '`'
+                      | '```' text '```'
+
+variable_declaration ::= set_declaration | var_declaration
+
+set_declaration     ::= 'set' ';' '[' '"' identifier '"' ']' ':' '(' value ')'
+
+var_declaration     ::= 'var' ';' '[' '"' identifier '"' ']' ':' '<' type '>' ';' '<' '(' value ')' '>'
+
+conditional         ::= if_block fi_block* el_block?
+
+if_block            ::= 'if' '{' condition '}' '<-' statement* '->'
+fi_block            ::= 'fi' '{' condition '}' '<-' statement* '->'
+el_block            ::= 'el' '{}' '<-' statement* '->'
+
+condition           ::= '<' identifier '>' '=' value
+
+expression          ::= '<' function_call '>'
+
+function_call       ::= print_call | input_call
+
+print_call          ::= 'print' ':' '(' value ')'
+input_call          ::= 'input' ';' 'print' ':' '(' value ')'
+
+value               ::= string | number | boolean | json_object
+
+string              ::= '"' character* '"'
+number              ::= [0-9]+ ('.' [0-9]+)?
+boolean             ::= 'true' | 'false'   (대소문자 무관)
+json_object         ::= '{' json_pair (',' json_pair)* '}'
+json_pair           ::= string ':' json_value
+
+type                ::= 'str'
+
+identifier          ::= (letter | hangul | '_') (letter | hangul | digit | '_')*
+```
+
+---
+
+## 완전한 예제 프로그램
+
+```bara
+```
+Capybara-Lang 종합 예제
+변수, 입출력, 조건문을 모두 사용합니다.
+```
+
+` 기본 출력 `
+<print:("=== Capybara-Lang 종합 예제 ===")>
+
+` 다양한 타입 변수 선언 `
+set;["이름"]:("카피바라")
+set;["나이"]:(3)
+set;["귀여움"]:(true)
+set;["정보"]:({"종류": "설치류", "서식지": "남미"})
+
+` 타입 명시 변수 `
+var;["설명"]:<str>;<("Capybara-Lang은 실험적인 언어입니다.")>
+
+` 사용자 입력 `
+set;["입력값"]:(<input;print:("좋아하는 언어를 입력하세요: ")>)
+
+` 조건문 `
+set;["pop"]:(true)
+
+if {<pop> = true}
+<-
+  <print:("✅ 실행되었습니다!")>
+->
+fi {<pop> = false}
+<-
+  <print:("❌ 이 블록은 실행되지 않습니다.")>
+->
+el {}
+<-
+  <print:("❓ 알 수 없는 상태.")>
+->
+
+<print:("프로그램 종료 🐾")>
+```
