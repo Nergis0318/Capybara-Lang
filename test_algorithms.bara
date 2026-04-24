@@ -1,0 +1,61 @@
+`알고리즘 테스트`
+
+`피본acci 수열 10번째`
+set;["n"]:(10)
+set;["a"]:(0)
+set;["b"]:(1)
+set;["count"]:(0)
+
+wh {count < n}
+<-
+set;["temp"]:(a + b)
+set;["a"]:(b)
+set;["b"]:(temp)
+set;["count"]:(count + 1)
+->
+
+<print:(a)>
+
+`유클리드 호제법 - 최대공약수`
+set;["m"]:(48)
+set;["n"]:(18)
+
+wh {n != 0}
+<-
+set;["temp"]:(n)
+set;["n"]:(m % n)
+set;["m"]:(temp)
+->
+
+<print:(m)>
+
+`1부터 100까지 짝수 합`
+set;["i"]:(1)
+set;["짝수합"]:(0)
+
+wh {i <= 100}
+<-
+if {i % 2 = 0}
+<-
+set;["짝수합"]:(짝수합 + i)
+->
+set;["i"]:(i + 1)
+->
+
+<print:(짝수합)>
+
+`소수 판별 (17)`
+set;["num"]:(17)
+set;["isPrime"]:(true)
+set;["divisor"]:(2)
+
+wh {divisor * divisor <= num}
+<-
+if {num % divisor = 0}
+<-
+set;["isPrime"]:(false)
+->
+set;["divisor"]:(divisor + 1)
+->
+
+<print:(isPrime)>

@@ -15,6 +15,7 @@ pub enum Token {
     Print,
     Input,
     Pop,
+    While,
     
     // Literals
     String(String),
@@ -38,6 +39,17 @@ pub enum Token {
     RightAngle,
     Colon,
     Equals,
+    NotEquals,
+    LessEquals,
+    GreaterEquals,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Percent,
+    And,
+    Or,
+    Not,
     
     // Block delimiters
     BlockStart, // <-
@@ -95,6 +107,10 @@ pub enum Statement {
         elif_clauses: Vec<(Expression, Vec<Statement>)>,
         else_body: Option<Vec<Statement>>,
     },
+    While {
+        condition: Expression,
+        body: Vec<Statement>,
+    },
     Expression(Expression),
 }
 
@@ -110,6 +126,10 @@ pub enum Expression {
         left: Box<Expression>,
         op: String,
         right: Box<Expression>,
+    },
+    UnaryOp {
+        op: String,
+        expr: Box<Expression>,
     },
 }
 
@@ -297,14 +317,28 @@ impl Lexer {
                         tokens.push(Token::BlockStart);
                         self.advance();
                         self.advance();
+                    } else if self.peek(1) == Some('=') {
+                        tokens.push(Token::LessEquals);
+                        self.advance();
+                        self.advance();
                     } else {
                         tokens.push(Token::LeftAngle);
                         self.advance();
                     }
                 }
                 '>' => {
-                    tokens.push(Token::RightAngle);
-                    self.advance();
+                    if self.peek(1) == Some('-') {
+                        tokens.push(Token::BlockEnd);
+                        self.advance();
+                        self.advance();
+                    } else if self.peek(1) == Some('=') {
+                        tokens.push(Token::GreaterEquals);
+                        self.advance();
+                        self.advance();
+                    } else {
+                        tokens.push(Token::RightAngle);
+                        self.advance();
+                    }
                 }
                 '-' => {
                     if self.peek(1) == Some('>') {
@@ -312,7 +346,7 @@ impl Lexer {
                         self.advance();
                         self.advance();
                     } else {
-                        // Handle negative numbers or other cases
+                        tokens.push(Token::Minus);
                         self.advance();
                     }
                 }
@@ -322,6 +356,32 @@ impl Lexer {
                 }
                 '=' => {
                     tokens.push(Token::Equals);
+                    self.advance();
+                }
+                '!' => {
+                    if self.peek(1) == Some('=') {
+                        tokens.push(Token::NotEquals);
+                        self.advance();
+                        self.advance();
+                    } else {
+                        tokens.push(Token::Not);
+                        self.advance();
+                    }
+                }
+                '+' => {
+                    tokens.push(Token::Plus);
+                    self.advance();
+                }
+                '*' => {
+                    tokens.push(Token::Star);
+                    self.advance();
+                }
+                '/' => {
+                    tokens.push(Token::Slash);
+                    self.advance();
+                }
+                '%' => {
+                    tokens.push(Token::Percent);
                     self.advance();
                 }
                 '"' => {
@@ -347,6 +407,9 @@ impl Lexer {
                         "print" => Token::Print,
                         "input" => Token::Input,
                         "pop" => Token::Pop,
+                        "wh" => Token::While,
+                        "and" => Token::And,
+                        "or" => Token::Or,
                         "true" | "True" | "TRUE" | "tRuE" | "TrUe" => Token::Boolean(true),
                         "false" | "False" | "FALSE" | "fAlSe" => Token::Boolean(false),
                         "str" => Token::Type("str".to_string()),
@@ -450,6 +513,7 @@ impl Parser {
             Token::Set => self.parse_variable_declaration(false),
             Token::Var => self.parse_variable_declaration(true),
             Token::If => self.parse_if_statement(),
+            Token::While => self.parse_while_statement(),
             Token::LeftAngle => {
                 let expr = self.parse_expression()?;
                 Ok(Statement::Expression(expr))
@@ -569,6 +633,25 @@ impl Parser {
         })
     }
     
+    fn parse_while_statement(&mut self) -> Result<Statement, String> {
+        self.advance(); // Skip 'wh'
+        
+        self.skip_newlines();
+        self.expect(Token::LeftBrace)?;
+        let condition = self.parse_expression()?;
+        self.expect(Token::RightBrace)?;
+        
+        self.skip_newlines();
+        self.expect(Token::BlockStart)?; // <-
+        let body = self.parse_block()?;
+        self.expect(Token::BlockEnd)?; // ->
+        
+        Ok(Statement::While {
+            condition,
+            body,
+        })
+    }
+    
     fn parse_block(&mut self) -> Result<Vec<Statement>, String> {
         let mut statements = Vec::new();
         
@@ -593,16 +676,52 @@ impl Parser {
     }
     
     fn parse_expression(&mut self) -> Result<Expression, String> {
-        self.parse_comparison()
+        self.parse_or()
     }
     
-    fn parse_comparison(&mut self) -> Result<Expression, String> {
-        let mut expr = self.parse_primary()?;
+    fn parse_or(&mut self) -> Result<Expression, String> {
+        let mut expr = self.parse_and()?;
         
-        while self.current_token == Token::Equals {
-            let op = "=".to_string();
+        while self.current_token == Token::Or {
             self.advance();
-            let right = self.parse_primary()?;
+            let right = self.parse_and()?;
+            expr = Expression::BinaryOp {
+                left: Box::new(expr),
+                op: "or".to_string(),
+                right: Box::new(right),
+            };
+        }
+        
+        Ok(expr)
+    }
+    
+    fn parse_and(&mut self) -> Result<Expression, String> {
+        let mut expr = self.parse_equality()?;
+        
+        while self.current_token == Token::And {
+            self.advance();
+            let right = self.parse_equality()?;
+            expr = Expression::BinaryOp {
+                left: Box::new(expr),
+                op: "and".to_string(),
+                right: Box::new(right),
+            };
+        }
+        
+        Ok(expr)
+    }
+    
+    fn parse_equality(&mut self) -> Result<Expression, String> {
+        let mut expr = self.parse_comparison()?;
+        
+        while self.current_token == Token::Equals || self.current_token == Token::NotEquals {
+            let op = if self.current_token == Token::Equals {
+                "=".to_string()
+            } else {
+                "!=".to_string()
+            };
+            self.advance();
+            let right = self.parse_comparison()?;
             expr = Expression::BinaryOp {
                 left: Box::new(expr),
                 op,
@@ -611,6 +730,99 @@ impl Parser {
         }
         
         Ok(expr)
+    }
+    
+    fn parse_comparison(&mut self) -> Result<Expression, String> {
+        let mut expr = self.parse_additive()?;
+        
+        while self.current_token == Token::LeftAngle
+            || self.current_token == Token::RightAngle
+            || self.current_token == Token::LessEquals
+            || self.current_token == Token::GreaterEquals
+        {
+            let op = match &self.current_token {
+                Token::LeftAngle => "<".to_string(),
+                Token::RightAngle => ">".to_string(),
+                Token::LessEquals => "<=".to_string(),
+                Token::GreaterEquals => ">=".to_string(),
+                _ => unreachable!(),
+            };
+            self.advance();
+            let right = self.parse_additive()?;
+            expr = Expression::BinaryOp {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+        
+        Ok(expr)
+    }
+    
+    fn parse_additive(&mut self) -> Result<Expression, String> {
+        let mut expr = self.parse_multiplicative()?;
+        
+        while self.current_token == Token::Plus || self.current_token == Token::Minus {
+            let op = if self.current_token == Token::Plus {
+                "+".to_string()
+            } else {
+                "-".to_string()
+            };
+            self.advance();
+            let right = self.parse_multiplicative()?;
+            expr = Expression::BinaryOp {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+        
+        Ok(expr)
+    }
+    
+    fn parse_multiplicative(&mut self) -> Result<Expression, String> {
+        let mut expr = self.parse_unary()?;
+        
+        while self.current_token == Token::Star
+            || self.current_token == Token::Slash
+            || self.current_token == Token::Percent
+        {
+            let op = match &self.current_token {
+                Token::Star => "*".to_string(),
+                Token::Slash => "/".to_string(),
+                Token::Percent => "%".to_string(),
+                _ => unreachable!(),
+            };
+            self.advance();
+            let right = self.parse_unary()?;
+            expr = Expression::BinaryOp {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+        
+        Ok(expr)
+    }
+    
+    fn parse_unary(&mut self) -> Result<Expression, String> {
+        if self.current_token == Token::Not {
+            self.advance();
+            let expr = self.parse_unary()?;
+            Ok(Expression::UnaryOp {
+                op: "!".to_string(),
+                expr: Box::new(expr),
+            })
+        } else if self.current_token == Token::Minus {
+            self.advance();
+            let expr = self.parse_unary()?;
+            Ok(Expression::UnaryOp {
+                op: "-".to_string(),
+                expr: Box::new(expr),
+            })
+        } else {
+            self.parse_primary()
+        }
     }
     
     fn parse_primary(&mut self) -> Result<Expression, String> {
@@ -702,7 +914,10 @@ impl Parser {
         match name.as_str() {
             "print" => {
                 self.expect(Token::Colon)?;
-                args.push(self.parse_expression()?);
+                self.expect(Token::LeftParen)?;
+                let expr = self.parse_expression()?;
+                self.expect(Token::RightParen)?;
+                args.push(expr);
             }
             "input" => {
                 // input;print:("prompt")
@@ -711,7 +926,10 @@ impl Parser {
                     if self.current_token == Token::Print {
                         self.advance();
                         self.expect(Token::Colon)?;
-                        args.push(self.parse_expression()?);
+                        self.expect(Token::LeftParen)?;
+                        let expr = self.parse_expression()?;
+                        self.expect(Token::RightParen)?;
+                        args.push(expr);
                     }
                 }
             }
@@ -736,22 +954,43 @@ impl Parser {
 }
 
 struct Environment {
-    variables: HashMap<String, Value>,
+    scopes: Vec<HashMap<String, Value>>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Self {
-            variables: HashMap::new(),
+            scopes: vec![HashMap::new()],
         }
     }
     
-    pub fn get(&self, name: &str) -> Option<&Value> {
-        self.variables.get(name)
+    pub fn enter_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+    
+    pub fn exit_scope(&mut self) {
+        if self.scopes.len() > 1 {
+            self.scopes.pop();
+        }
+    }
+    
+    pub fn get(&self, name: &str) -> Option<Value> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(value) = scope.get(name) {
+                return Some(value.clone());
+            }
+        }
+        None
     }
     
     pub fn set(&mut self, name: String, value: Value) {
-        self.variables.insert(name, value);
+        for scope in self.scopes.iter_mut().rev() {
+            if scope.contains_key(&name) {
+                scope.insert(name, value);
+                return;
+            }
+        }
+        self.scopes.last_mut().unwrap().insert(name, value);
     }
 }
 
@@ -785,17 +1024,21 @@ impl Interpreter {
                 let condition_value = self.evaluate_expression(condition)?;
                 
                 if condition_value.is_truthy() {
+                    self.environment.enter_scope();
                     for stmt in then_body {
                         self.execute_statement(stmt)?;
                     }
+                    self.environment.exit_scope();
                 } else {
                     let mut executed = false;
                     for (elif_condition, elif_body) in elif_clauses {
                         let elif_value = self.evaluate_expression(elif_condition)?;
                         if elif_value.is_truthy() {
+                            self.environment.enter_scope();
                             for stmt in elif_body {
                                 self.execute_statement(stmt)?;
                             }
+                            self.environment.exit_scope();
                             executed = true;
                             break;
                         }
@@ -803,11 +1046,26 @@ impl Interpreter {
                     
                     if !executed {
                         if let Some(else_stmts) = else_body {
+                            self.environment.enter_scope();
                             for stmt in else_stmts {
                                 self.execute_statement(stmt)?;
                             }
+                            self.environment.exit_scope();
                         }
                     }
+                }
+            }
+            Statement::While { condition, body } => {
+                loop {
+                    let condition_value = self.evaluate_expression(condition.clone())?;
+                    if !condition_value.is_truthy() {
+                        break;
+                    }
+                    self.environment.enter_scope();
+                    for stmt in body.clone() {
+                        self.execute_statement(stmt)?;
+                    }
+                    self.environment.exit_scope();
                 }
             }
             Statement::Expression(expr) => {
@@ -822,21 +1080,41 @@ impl Interpreter {
             Expression::Value(val) => Ok(val),
             Expression::Variable(name) => {
                 self.environment.get(&name)
-                    .cloned()
                     .ok_or_else(|| format!("Undefined variable: {}", name))
             }
             Expression::FunctionCall { name, args } => {
                 self.call_function(name, args)
+            }
+            Expression::UnaryOp { op, expr } => {
+                let val = self.evaluate_expression(*expr)?;
+                match op.as_str() {
+                    "!" => Ok(Value::Boolean(!val.is_truthy())),
+                    "-" => match val {
+                        Value::Number(n) => Ok(Value::Number(-n)),
+                        _ => Err("Unary minus requires a number".to_string()),
+                    },
+                    _ => Err(format!("Unknown unary operator: {}", op)),
+                }
             }
             Expression::BinaryOp { left, op, right } => {
                 let left_val = self.evaluate_expression(*left)?;
                 let right_val = self.evaluate_expression(*right)?;
                 
                 match op.as_str() {
-                    "=" => {
-                        Ok(Value::Boolean(self.values_equal(&left_val, &right_val)))
-                    }
-                    _ => Err(format!("Unknown operator: {}", op))
+                    "=" => Ok(Value::Boolean(self.values_equal(&left_val, &right_val))),
+                    "!=" => Ok(Value::Boolean(!self.values_equal(&left_val, &right_val))),
+                    "<" => Ok(Value::Boolean(self.compare_numbers(&left_val, &right_val)? < 0.0)),
+                    ">" => Ok(Value::Boolean(self.compare_numbers(&left_val, &right_val)? > 0.0)),
+                    "<=" => Ok(Value::Boolean(self.compare_numbers(&left_val, &right_val)? <= 0.0)),
+                    ">=" => Ok(Value::Boolean(self.compare_numbers(&left_val, &right_val)? >= 0.0)),
+                    "+" => self.add_values(&left_val, &right_val),
+                    "-" => self.subtract_values(&left_val, &right_val),
+                    "*" => self.multiply_values(&left_val, &right_val),
+                    "/" => self.divide_values(&left_val, &right_val),
+                    "%" => self.modulo_values(&left_val, &right_val),
+                    "and" => Ok(Value::Boolean(left_val.is_truthy() && right_val.is_truthy())),
+                    "or" => Ok(Value::Boolean(left_val.is_truthy() || right_val.is_truthy())),
+                    _ => Err(format!("Unknown operator: {}", op)),
                 }
             }
         }
@@ -849,6 +1127,61 @@ impl Interpreter {
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Null, Value::Null) => true,
             _ => false,
+        }
+    }
+    
+    fn compare_numbers(&self, left: &Value, right: &Value) -> Result<f64, String> {
+        match (left, right) {
+            (Value::Number(a), Value::Number(b)) => Ok(a - b),
+            _ => Err("Comparison requires numbers".to_string()),
+        }
+    }
+    
+    fn add_values(&self, left: &Value, right: &Value) -> Result<Value, String> {
+        match (left, right) {
+            (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + b)),
+            (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
+            _ => Err("Invalid operands for +".to_string()),
+        }
+    }
+    
+    fn subtract_values(&self, left: &Value, right: &Value) -> Result<Value, String> {
+        match (left, right) {
+            (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a - b)),
+            _ => Err("Invalid operands for -".to_string()),
+        }
+    }
+    
+    fn multiply_values(&self, left: &Value, right: &Value) -> Result<Value, String> {
+        match (left, right) {
+            (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a * b)),
+            _ => Err("Invalid operands for *".to_string()),
+        }
+    }
+    
+    fn divide_values(&self, left: &Value, right: &Value) -> Result<Value, String> {
+        match (left, right) {
+            (Value::Number(a), Value::Number(b)) => {
+                if *b == 0.0 {
+                    Err("Division by zero".to_string())
+                } else {
+                    Ok(Value::Number(a / b))
+                }
+            }
+            _ => Err("Invalid operands for /".to_string()),
+        }
+    }
+    
+    fn modulo_values(&self, left: &Value, right: &Value) -> Result<Value, String> {
+        match (left, right) {
+            (Value::Number(a), Value::Number(b)) => {
+                if *b == 0.0 {
+                    Err("Modulo by zero".to_string())
+                } else {
+                    Ok(Value::Number(a % b))
+                }
+            }
+            _ => Err("Invalid operands for %".to_string()),
         }
     }
     
