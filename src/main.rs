@@ -297,8 +297,18 @@ impl Lexer {
                     self.advance();
                 }
                 '(' => {
-                    tokens.push(Token::LeftParen);
-                    self.advance();
+                    if self.peek(1) == Some('{') {
+                        self.advance(); // consume '('
+                        let json_str = self.read_json();
+                        tokens.push(Token::Json(json_str));
+                        self.skip_whitespace();
+                        if self.current_char == Some(')') {
+                            self.advance(); // consume ')'
+                        }
+                    } else {
+                        tokens.push(Token::LeftParen);
+                        self.advance();
+                    }
                 }
                 ')' => {
                     tokens.push(Token::RightParen);
@@ -466,9 +476,6 @@ impl Parser {
         self.current_token = self.tokens.get(self.position).cloned().unwrap_or(Token::Eof);
     }
     
-    fn peek(&self) -> &Token {
-        self.tokens.get(self.position + 1).unwrap_or(&Token::Eof)
-    }
     
     fn expect(&mut self, expected: Token) -> Result<(), String> {
         if std::mem::discriminant(&self.current_token) == std::mem::discriminant(&expected) {
@@ -937,7 +944,7 @@ impl Parser {
                 // pop can be standalone or with arguments
             }
             _ => {
-                // Generic function call
+                // Generic function call or variable reference
                 while self.current_token != Token::RightAngle && self.current_token != Token::Eof {
                     args.push(self.parse_expression()?);
                     if self.current_token == Token::Semicolon {
@@ -945,6 +952,9 @@ impl Parser {
                     } else {
                         break;
                     }
+                }
+                if args.is_empty() {
+                    return Ok(Expression::Variable(name));
                 }
             }
         }

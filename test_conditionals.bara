@@ -1,12 +1,12 @@
 `조건문 테스트`
 
-set;["pop"]:(true)
+set;["check"]:(true)
 
-if {<pop> = true}
+if {<check> = true}
 <-
 <print:("조건이 참입니다!")>
 ->
-fi {<pop> = false}
+fi {<check> = false}
 <-
 <print:("조건이 거짓입니다!")>
 ->
